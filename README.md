@@ -27,16 +27,16 @@ To obtain your **_Access Token_**, you'll need to do the following:
 1. Login to your Canvas portal
 2. Head to **Account** &#8594; **Settings**
 
-    ![Account_Settings](https://github.com/azer0m/CADT/blob/main/Account_Settings.png?raw=true)
+    ![Account_Settings](https://github.com/azer0m/CADT/blob/main/images/Account_Settings.png?raw=true)
 3. Scroll to **Approved Integrations** and click **New Access Token**
 4. For **Purpose**, type `Admin API`, leave **Expires** blank, and click
    **Generate Token**
 
-    ![Account_Settings](https://github.com/azer0m/CADT/blob/main/Generate_Access_Token.png?raw=true)
+    ![Account_Settings](https://github.com/azer0m/CADT/blob/main/images/Generate_Access_Token.png?raw=true)
 5. Follow the instructions and copy your **Access Token** now, otherwise you
    will lose it and have to regenerate one
 
-   ![Account_Settings](https://github.com/azer0m/CADT/blob/main/Copy_Token.png?raw=true)
+   ![Account_Settings](https://github.com/azer0m/CADT/blob/main/images/Copy_Token.png?raw=true)
 6. Place your full **Access Token** in `credentials.py`.
 
 Your `credentials.py` file should now look something like this:

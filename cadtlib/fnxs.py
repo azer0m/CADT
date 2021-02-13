@@ -1,6 +1,6 @@
 import os
+from canvasapi.course import CourseNickname
 import requests
-import logging
 from canvasapi.exceptions import Unauthorized
 
 def calc_files_size(all_files, total_size, course_name):
@@ -27,13 +27,12 @@ def calc_files_size(all_files, total_size, course_name):
     total_size : int
         Total file size [bytes] for files in courses seen so far
     """
-    # May get Unauthorized exception if trying to access Files for some courses
     try:
         for file in all_files:
             total_size += file.get_size()
-            print(f"CURR SIZE: {total_size} BYTES")
+            print_and_log(f"CURR SIZE: {total_size} BYTES")
     except Unauthorized:
-        print(f"Unauthorized Files access for {course_name}!")
+        print_and_log(f"Unauthorized Files access for {course_name}!")
     return total_size
 
 def create_folder(folder_path):
@@ -46,7 +45,7 @@ def create_folder(folder_path):
         Relative path to folder
     """
     if not os.path.isdir(folder_path):
-        print(f"{folder_path} folder doesn't exist. Creating folder. . .")
+        print_and_log(f"{folder_path} folder doesn't exist. Creating folder. . .")
         os.makedirs(folder_path) # Create all folders along path
 
 def convert_datetime(datetime):
@@ -87,82 +86,94 @@ def convert_datetime(datetime):
     subfolder_name = term+"_"+year
     return subfolder_name
 
-def download_files(course, folder_path, verbose=False):
+def download_files(all_courses, downloads_path, verbose=False):
     """
-    Downloads all files in course.
+    Download all files across all courses.
 
     Parameters
     ----------
-    course : canvasapi.course.Course
-        Course object from which we can fetch Files objects
-    folder_path : str
-        Path to where files will be downloaded
+    all_courses : PaginatedList of Course objects
+        All active courses for current user
+    downloads_path : str
+        Start of path where files will be downloaded to
     verbose : bool, optional
-        If True, prints name of file currently being downloaded, by default False
+        If True, prints name of file currently being downloaded, by default
+        False
     """
-    create_folder(folder_path)
-    course_files = course.get_files()
-    # May get Unauthorized exception if trying to access Files for some courses
+    for course in all_courses:
+        course_name = course.name.replace(" ", "_")
+        course_term = convert_datetime(course.start_at)
+        file_folder_path = os.path.join(downloads_path, course_term,
+                                        course_name, "Files")
+        course_files = course.get_files()
+        try:
+            for file in course_files:
+                fname = str(file)
+                file_path = os.path.join(file_folder_path, fname)
+                create_folder(file_folder_path)
+                file_path = verify_file_path(file_path)
+                if verbose:
+                    print_and_log(f"Downloading {fname}. . .")
+                file.download(file_path)
+        except Unauthorized:
+            print_and_log(f"Unauthorized Files access for {course.name}")
+
+def download_submissions(user, downloads_path, verbose=False):
+    """
+    Given a user object, gets all submissions associated with user, including
+    Canvas export zip files.
+
+    Parameters
+    ----------
+    user : canvasapi.user.User
+        User object from which all folder and file access is exposed
+    downloads_path : str
+        Start of path where submission files will be downloaded to
+    verbose : bool, optional
+        If True, prints name of file currently being downloaded, by default
+        False
+    """
     try:
-        for file in course_files:
-            fname = str(file)
-            file_path = os.path.join(folder_path, fname)
-            file_path = verify_file_path(file_path)
+        all_folders = user.get_folders()
+    except Unauthorized:
+        print_and_log(f"Unauthorized Folders access. This is unexpected behavior!")
+    for folder in all_folders:
+        folder_term = convert_datetime(folder.created_at)
+        try:
+            all_files = folder.get_files()
+        except Unauthorized:
+            print_and_log(f"Unauthorized Files access for {folder.name}!")
+        for file in all_files:
+            folder_name = folder.name.replace(" ", "_")
+            fname = file.display_name
+            file_url = file.url
+            if folder.name == "data exports":
+                download_folder = os.path.join(downloads_path, folder_name)
+            else:
+                download_folder = os.path.join(downloads_path, folder_term,
+                                               folder_name, "Submissions")
+            file_path = os.path.join(download_folder, fname)
+            create_folder(download_folder)
+            response = requests.request("GET", file_url)
             if verbose:
-                with open("output.log", "a") as f:
-                    f.write(f"Downloading {fname}. . .\n")
-                print(f"Downloading {fname}. . .")
-            file.download(file_path)
-    except Unauthorized:
-        print(f"Unauthorized Files access for {course.name}")
+                print_and_log(f"Downloading {fname}. . .")
+            with open(file_path, "wb") as file_out:
+                file_out.write(response.content)
 
-def download_submissions(course, folder_path, verbose=False):
+def print_and_log(text, output_file="output.log"):
     """
-    Downloads all submissions in course.
+    Prints to console and logs to output.log file.
 
     Parameters
     ----------
-    course : canvasapi.course.Course
-        Course object from which we can fetch Submission objects
-    folder_path : str
-        Path to where submissions will be downloaded
-    verbose : bool, optional
-        If True, prints name of submission currently being downloaded, by default False
+    text : str
+        Text to be printed and logged
+    output_file : str, optional
+        Name of log file, by default "output.log"
     """
-    all_assignments = course.get_assignments()
-    try:
-        # Iterate through all assignments
-        for assignment in all_assignments:
-            assignment_subfolder = str(assignment).replace(" ", "_")
-            assignment_subfolder_path = os.path.join(folder_path, 
-                                                     assignment_subfolder)
-            create_folder(assignment_subfolder_path)
-            assignment_submissions = assignment.get_submissions()
-            try:
-                # Iterate through all submissions
-                for submission in assignment_submissions:
-                    # Will get AttributeError if attachments do not exist
-                    try:
-                        # Iterate through all attachments
-                        for attachment in submission.attachments:
-                            # Get attachment URL and download to location
-                            attachment_url = attachment["url"]
-                            response = requests.request("GET", attachment_url)
-                            attachment_fname = attachment["filename"]
-                            location = os.path.join(assignment_subfolder_path,
-                                                    attachment_fname)
-                            if verbose:
-                                with open("output.log", "a") as f:
-                                    f.write(f"Downloading {attachment_fname}. . .\n")
-                                print(f"Downloading {attachment_fname}. . .")
-                            with open(location, "wb") as file_out:
-                                file_out.write(response.content)
-                    except AttributeError:
-                        print(f"No attachments for {assignment_subfolder}!")
-            except Unauthorized:
-                print(f"Unauthorized Submissions access for {course.name}")
-    except Unauthorized:
-        print(f"Unauthorized Assignments access for {course.name}")
+    with open(output_file, "a") as f:
+        f.write(text+"\n")
+    print(text)
 
 def remove_empty_folders(root):
     """
@@ -187,7 +198,7 @@ def remove_empty_folders(root):
     files = os.listdir(root)
     # If the folder is empty and not the Downloaded_Files/ folder
     if len(files) == 0 and root != "Downloaded_Files/":
-        print(f"Removing empty folder: {root}")
+        print_and_log(f"Removing empty folder: {root}")
         os.rmdir(root)
 
 def verify_file_path(file_path):

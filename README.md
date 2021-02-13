@@ -55,7 +55,7 @@ This will first install any required dependencies via `pip`, and then run the
 CADT tool. Depending on how many files, submissions, and courses are associated
 with the user, this may take several minutes.
 
-All downloaded files will be placed in a folder at
+All downloaded files will be placed under
 `CADT/Downloaded_Files/`. See [**Caveats**](#Caveats) for what this tool can and
 cannot download.
 
@@ -70,15 +70,6 @@ and submission for each course, searching for downloadable content.
 
 # Caveats
 CADT is capable of downloading course files and course submissions if they are
-accessible. Generally, course submissions are not accessible to the Canvas LMS
-REST API &mdash; the backend of CADT &mdash; unless you have an instructor
-**Access Token** or the instructor has allowed this functionality. Courses
-within the **_Past Enrollments_** category in Canvas may or may not be
-accessible either, and so this tool may or not be able to acquire files and
-submissions from them.
-
-For courses within the **_Past Enrollments_** category, it is recommended to
-download files manually. For submissions, it is recommended to use the
-**_Download Submissions_** button within Canvas, under **Account** &#8594;
-**Settings**. You can also download submissions one-by-one directly from the
-**Assignments** within each course.
+accessible or active. For example, courses within the **_Past Enrollments_**
+category in Canvas are usually not accessible by Canvas. In these cases, special care should
+be taken to download files and submission for those courses manually.

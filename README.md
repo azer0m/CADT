@@ -73,3 +73,42 @@ CADT is capable of downloading course files and course submissions if they are
 accessible or active. For example, courses within the **_Past Enrollments_**
 category in Canvas are usually not accessible by Canvas. In these cases, special care should
 be taken to download files and submission for those courses manually.
+
+# Developing Code
+Feel free to mess around with my code and/or add more functionality! Pull
+requests welcome :-)
+
+If you make any changes to the `cadtlib`, you can quickly rebuild the code and
+produce a `WHL` package by running the following script:
+```bash
+./build_cadtlib.sh
+```
+This script runs `CADT/setup/setup.py` to produce a `WHL` package for `cadtlib`,
+and then cleans up the directories by removing unneeded folders and files.
+`cadt.sh` ensures that the `cadtlib` package is installed via `pip` before calling `cadt.py`.
+
+### Use a Virtual Environment
+I recommend creating a virtual environment for all testing. Navigate to the
+`CADT/` directory and execute:
+```bash
+python -m venv venv
+```
+to produce a virtual environment named `venv`.
+
+Make any changes to the code, and run `build_cadtlib.sh`. Then, source the
+virtual environment by executing:
+```bash
+source venv/bin/activate
+```
+Now run CADT by executing:
+```bash
+./cadt.sh
+```
+Since `cadt.sh` installs the necessary packages, running the script within the
+virtual environment ensures that any issues with `cadtlib` don't affect the
+normal Python installation or its packages.
+
+If you'd like to make changes to code again, exit the virtual environment. To exit a virtual environment, you simply have to `deactivate` it like so:
+```bash
+deactivate
+```

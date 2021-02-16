@@ -35,19 +35,6 @@ def calc_files_size(all_files, total_size, course_name):
         print_and_log(f"Unauthorized Files access for {course_name}!")
     return total_size
 
-def create_folder(folder_path):
-    """
-    Create a folder if it does not exist.
-
-    Parameters
-    ----------
-    folderPath : str
-        Relative path to folder
-    """
-    if not os.path.isdir(folder_path):
-        print_and_log(f"{folder_path} folder doesn't exist. Creating folder. . .")
-        os.makedirs(folder_path) # Create all folders along path
-
 def convert_datetime(datetime):
     """
     Convert datetime of format YYYY-MM-DDTHH:MM:SS to semester term and year
@@ -86,6 +73,41 @@ def convert_datetime(datetime):
     subfolder_name = term+"_"+year
     return subfolder_name
 
+def correct_name(name):
+    """
+    Ensures that the name of object used to create paths in file system do not
+    contain characters that would be handled erroneously (e.g. \ or / that
+    normally separate file directories).
+
+    Parameters
+    ----------
+    name : str
+        Name of object (course, file, folder, etc.) to correct
+
+    Returns
+    -------
+    corrected_name
+        Corrected name
+    """
+    corrected_name = name.replace(" ", "_")
+    corrected_name = corrected_name.replace("\\", "_")
+    corrected_name = corrected_name.replace("/", "_")
+    corrected_name = corrected_name.replace(":", "_")
+    return corrected_name
+
+def create_folder(folder_path):
+    """
+    Create a folder if it does not exist.
+
+    Parameters
+    ----------
+    folderPath : str
+        Relative path to folder
+    """
+    if not os.path.isdir(folder_path):
+        print_and_log(f"{folder_path} folder doesn't exist. Creating folder. . .")
+        os.makedirs(folder_path) # Create all folders along path
+
 def download_files(all_courses, downloads_path, verbose=False):
     """
     Download all files across all courses.
@@ -101,20 +123,23 @@ def download_files(all_courses, downloads_path, verbose=False):
         False
     """
     for course in all_courses:
-        course_name = course.name.replace(" ", "_")
+        course_name = correct_name(course.name)
         course_term = convert_datetime(course.start_at)
         file_folder_path = os.path.join(downloads_path, course_term,
                                         course_name, "Files")
         course_files = course.get_files()
         try:
             for file in course_files:
-                fname = str(file)
+                fname = correct_name(str(file))
                 file_path = os.path.join(file_folder_path, fname)
                 create_folder(file_folder_path)
                 file_path = verify_file_path(file_path)
                 if verbose:
                     print_and_log(f"Downloading {fname}. . .")
-                file.download(file_path)
+                try:
+                    file.download(file_path)
+                except FileNotFoundError:
+                    print_and_log(f"file_path is likely erroneously handled by file system: {file_path}")
         except Unauthorized:
             print_and_log(f"Unauthorized Files access for {course.name}")
 
@@ -144,21 +169,28 @@ def download_submissions(user, downloads_path, verbose=False):
         except Unauthorized:
             print_and_log(f"Unauthorized Files access for {folder.name}!")
         for file in all_files:
-            folder_name = folder.name.replace(" ", "_")
-            fname = file.display_name
+            folder_name = correct_name(folder.name)
+            fname = correct_name(file.display_name)
             file_url = file.url
             if folder.name == "data exports":
                 download_folder = os.path.join(downloads_path, folder_name)
             else:
                 download_folder = os.path.join(downloads_path, folder_term,
                                                folder_name, "Submissions")
+            
             file_path = os.path.join(download_folder, fname)
             create_folder(download_folder)
-            response = requests.request("GET", file_url)
+            try:
+                response = requests.request("GET", file_url)
+            except Exception as e:
+                print_and_log(f"Failed to request file at {file_url} ## ", e)
             if verbose:
                 print_and_log(f"Downloading {fname}. . .")
-            with open(file_path, "wb") as file_out:
-                file_out.write(response.content)
+            try:
+                with open(file_path, "wb") as file_out:
+                    file_out.write(response.content)
+            except FileNotFoundError:
+                print_and_log(f"file_path is likely erroneously handled by file system: {file_path}")
 
 def print_and_log(text, output_file="output.log"):
     """
